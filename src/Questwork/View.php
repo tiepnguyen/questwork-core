@@ -17,7 +17,7 @@ class View extends Base implements Interfaces\View
 
     protected static $error;
 
-	public function __construct($name, $vars = [])
+	public function __construct($name = NULL, $vars = [])
 	{
 		$this->name = $name;
 		$this->vars = $vars;
@@ -37,7 +37,7 @@ class View extends Base implements Interfaces\View
 
     public function __toString()
     {
-    	try {
+        try {
     		return $this->render();
     	} catch (Exception $error) {
     		return $error->getMessage();
@@ -96,7 +96,8 @@ class View extends Base implements Interfaces\View
             extract($this->vars);
         }
         $this->rendered = '';
-        @eval('$this->rendered = "' . str_replace('"', '\"', file_get_contents($this->file)) . '";');
+        $render = @eval('$this->rendered = "' . str_replace('"', '\"', file_get_contents($this->file)) . '";');
+
         self::$error = is_null(self::$error) && !is_null($error = error_get_last()) && $error['type'] == E_PARSE;
         if (self::$error == TRUE) {
             $message = 'View parsing error: ' . $this->file . ' on line ' . $error['line'];

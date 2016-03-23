@@ -13,8 +13,15 @@ class Controller extends Base implements Interfaces\Controller
 		$this->response = $response;
 	}
 
+	/*
 	public function __destruct()
 	{
 		echo $this->response;
+	}
+	*/
+
+	public function printResponse()
+	{
+		$this->response->write();
 	}
 }

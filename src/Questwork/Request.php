@@ -57,10 +57,18 @@ class Request implements Interfaces\Request
         ];
     }
 
+    public function url()
+    {
+        return $this->scheme() . '://' . $this->host() . $this->path() . '?' . $this->query();
+    }
+
     public function scheme()
     {
         if ($this->isCli()) {
             return NULL;
+        }
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            return $_SERVER['HTTP_X_FORWARDED_PROTO'];
         }
         return (isset($_SERVER['HTTPS'])) ? 'https' : 'http';
     }
@@ -94,7 +102,15 @@ class Request implements Interfaces\Request
     }
 
     public function ip() {
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        }
         return $_SERVER['REMOTE_ADDR'];
+    }
+
+    public function country()
+    {
+        return (isset($_SERVER['HTTP_CF_IPCOUNTRY'])) ? $_SERVER['HTTP_CF_IPCOUNTRY'] : NULL;
     }
 
     public function basePath()
@@ -158,18 +174,21 @@ class Request implements Interfaces\Request
         return $this;
     }
 
-    public function cookie($key = NULL, $value = NULL, $expire = 0, $path = '/')
+    public function cookie($key = NULL, $value = NULL, $expire = NULL, $path = '/')
     {
         if (!is_null($value)) {
-            setcookie($name, $value, $expire, $path);
+            if (is_null($expire)) {
+                $expire = time() + 3600*24*30;
+            }
+            setcookie($key, $value, $expire, $path, FALSE, ($this->scheme() == 'https'), TRUE);
             return $this;
         }
         return is_null($key) ? $_COOKIE : (isset($_COOKIE[$key]) ? $_COOKIE[$key] : NULL);
     }
 
-    public function removeCookie($name)
+    public function removeCookie($key, $path = '/')
     {
-        unset($_COOKIE[$name]);
+        setcookie($key, FALSE, -1, $path);
         return $this;
     }
 

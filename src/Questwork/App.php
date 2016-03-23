@@ -9,6 +9,8 @@ class App extends Base implements Interfaces\App
 
     protected static $actions;
 
+    public static $env;
+
 	public function __construct(Interfaces\Request $request, Interfaces\Response $response)
 	{
         $this->request = $request;
@@ -20,20 +22,14 @@ class App extends Base implements Interfaces\App
 	public function execute($routes = [], $rootPath = NULL)
 	{
 		$params = $this->parseRoute($routes);
-		self::$rootPath = defined('APP_PATH_ROOT') ? APP_PATH_ROOT : ($rootPath ?: dirname($_SERVER['SCRIPT_FILENAME']));
-		$controller = $params['controller'];
-		$path = defined('APP_PATH_CLASS') ? APP_PATH_CLASS : self::$rootPath . '/classes';
-		if ($file = $this->fileExistsCi($path . '/' . $controller . '.php')) {
-            $class = '\\' . substr($file, strlen($path) + 1, -4);
-        } else if ($file = $this->fileExistsCi($path . str_repeat('/' . $controller, 2) . '.php')) {
-            $class = substr($file, strlen($path) + 1, -4);
-            $class = str_repeat('\\' . substr($class, 0, strlen($class) / 2), 2);
-        } else {
+		$controller = '\\' . implode('', array_map('ucfirst', explode('-', $params['controller'])));
+        if (!class_exists($controller) && !class_exists($controller = str_repeat($controller, 2))) {
             trigger_error('Route not found: ' . $controller);
             throw new Exception('Route not found', 404);
         }
-        require $file;
-        $controller = new $class($this->request, $this->response, $params);
+        $controller = new $controller($this->request, $this->response, $params);
+        // $controller();
+        $controller->printResponse();
         return $this;
 	}
 
@@ -49,16 +45,6 @@ class App extends Base implements Interfaces\App
             }
         }
         return $this;
-    }
-
-    static function rootPath()
-    {
-        return self::$rootPath;
-    }
-
-    static function baseUrl()
-    {
-        return self::$baseUrl;
     }
 
     public function errorHandler($handler)
@@ -89,13 +75,23 @@ class App extends Base implements Interfaces\App
         });
     }
 
-    static function runAction($key, $context)
+    static function runAction($key, $context = NULL, $args = [])
     {
         if (!is_null(self::$actions[$key])) {
             foreach (self::$actions[$key] as $function) {
-                call_user_func($function['action'], $context);
+                call_user_func($function['action'], $context, $args);
             }
         }
+    }
+
+    static function rootPath()
+    {
+        return self::$rootPath;
+    }
+
+    static function baseUrl()
+    {
+        return self::$baseUrl;
     }
 
 	protected function parseRoute($routes = [])
@@ -124,38 +120,4 @@ class App extends Base implements Interfaces\App
             return $params;
         }
     }
-
-    protected function fileExistsSingle($file)
-    {
-        if (file_exists($file) === TRUE) {
-            return $file;
-        }
-        $lowerfile = strtolower($file);
-        foreach (glob(dirname($file) . '/*') as $file) {
-            if (strtolower($file) === $lowerfile) {
-                return $file;
-            }
-        }
-        return FALSE;
-    }
-
-    protected function fileExistsCi($filePath)
-    {
-        if (file_exists($filePath) === TRUE) {
-            return $filePath;
-        }
-        $dirs = explode('/', $filePath);
-        $len = count($dirs);
-        $dir = '/';
-        foreach ($dirs as $i => $part) {
-            $dirpath = $this->fileExistsSingle($dir . $part);
-            if ($dirpath === FALSE) {
-                return FALSE;
-            }
-            $dir = $dirpath;
-            $dir .= (($i > 0) && ($i < $len - 1)) ? '/' : '';
-        }
-        return $dir;
-    }
-
 }

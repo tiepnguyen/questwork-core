@@ -19,12 +19,7 @@ class Response implements Interfaces\Response
 
 	public function __toString()
 	{
-		if (is_array($this->body)) {
-			// return json_encode($this->header('Content-Type', 'application/json')->body, JSON_PRETTY_PRINT);
-			return json_encode($this->body, JSON_PRETTY_PRINT);
-		} else {
-			return (string) $this->body;
-		}
+		return $this->write();
 	}
 
 	public function status($code = NULL)
@@ -74,7 +69,11 @@ class Response implements Interfaces\Response
 
 	public function redirect($url, $timer = 0, $message = NULL)
 	{
-		if ($timer == 0) {
+		if (is_null($message) && !is_numeric($timer)) {
+			$message = $timer;
+			$timer = 0;
+		}
+		if (!is_numeric($timer)) {
 			header('Location:' . $url);
 		} else {
 			header('Refresh:' . $timer . ';url=' . $url);
@@ -84,6 +83,10 @@ class Response implements Interfaces\Response
 
 	public function refresh($timer = 0, $message = NULL)
 	{
+		if (is_null($message) && !is_numeric($timer)) {
+			$message = $timer;
+			$timer = 0;
+		}
 		header('Refresh:' . $timer);
 		$this->end($message);
 	}
@@ -93,4 +96,15 @@ class Response implements Interfaces\Response
 		exit($message);
 	}
 
+	public function write($body = NULL)
+	{
+		if (!is_null($body)) {
+			$this->body = $body;
+		}
+		if (is_array($this->body)) {
+			$this->body = json_encode($this->header('Content-Type', 'application/json')->body, JSON_PRETTY_PRINT);
+		}
+		echo $this->body;
+		return $this;
+	}
 }
